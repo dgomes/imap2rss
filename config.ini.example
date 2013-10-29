@@ -1,4 +1,5 @@
 [main]
+port: 8000
 baseurl: http://localhost:8000/
 redirecturl: http://my.domain/webpage/
 redirectdomain: my.domain

@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 from ConfigParser import SafeConfigParser
 import codecs
@@ -202,7 +203,7 @@ root.attach = AttachReader();
 conf = {
 	'global': {
 		'server.socket_host': '0.0.0.0',
-		'server.socket_port': 8000,
+		'server.socket_port': config.getint('main', 'port'),
 	},
 	'/': {
 		'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
