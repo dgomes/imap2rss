@@ -1,0 +1,23 @@
+[main]
+baseurl: http://localhost:8000/
+redirecturl: http://my.domain/webpage/
+redirectdomain: my.domain
+
+[imap]
+server: imap.server.com
+username: myusername
+password: p4ssw0rd
+mailbox: INBOX
+default_from: no-reply@my.domain
+lastdays: 90
+
+[rss]
+maxitems: 20
+id: http://localhost:8000/
+title: RSS title
+subtitle: Feed Slogan maybe?
+description: Short description of the feed
+author_name: 'John Doe'
+author_email: john_doe@my.domain
+language: pt-PT
+href: http://localhost:8000/
