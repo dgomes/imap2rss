@@ -206,8 +206,10 @@ conf = {
 		'server.socket_port': config.getint('main', 'port'),
 	},
 	'/': {
+		'log.access_file': '/var/log/imap2rss.access.log',
 		'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
 	}
 }
+cherrypy.process.plugins.Daemonizer(cherrypy.engine).subscribe()
 
 cherrypy.quickstart(root, '/', conf)
