@@ -46,6 +46,8 @@ class EmailClient(object):
 					return body, t
 		elif mail.get_content_type() == typ:
 			return unicode(mail.get_payload(decode=True), charset, 'ignore'), mail.get_content_type()
+		elif mail.get_content_type() == 'text/plain':
+			return '<pre>'+unicode(mail.get_payload(decode=True), charset, 'ignore')+'</pre>', mail.get_content_type()
 		else:
 			return None, None
 
@@ -83,7 +85,7 @@ class EmailClient(object):
 		try:
 			attach, typ = self._getAttachment(mail, cid)
 		except TypeError as e:
-			cherrypy.error(e)
+			cherrypy.log.error("getImage(): "+str(e))
 			raise cherrypy.NotFound()
 
 		return attach, typ
@@ -120,30 +122,25 @@ class AttachReader(object):
 
 class EmailReader(object):
 	exposed = True
-	def GET(self, uid):
+
+	def GET(self, uid=None, utm_medium=None, utm_source=None):
 		from BeautifulSoup import BeautifulSoup, Tag, NavigableString
 		cherrypy.response.headers["Access-Control-Allow-Origin"] = "*"
 		cherrypy.log("EmailReader "+uid)
+		if uid==None:
+			return "404 Not Found"
 		client = EmailClient()
 		mail = client.getEMail(uid)
 
-		soup = BeautifulSoup(mail['body'])
+		if mail['body'] != None:
+			soup = BeautifulSoup(mail['body'])
+		else:
+			soup = BeautifulSoup('<html><body><h1>'+mail['subject']+'</h1></body></html>')
+
 		subject = NavigableString(mail['subject'])
 		title = Tag(soup, "title")
 		title.insert(0, subject)
 
-
-		# Redirecting
-		meta = Tag(soup, "meta")
-		meta['http-equiv'] = "refresh"
-		meta['content'] = "0;url="+config.get('main','redirecturl')+"?"+uid
-		link = Tag(soup, "link")
-		link['rel'] = "canonical"
-		link['href'] = config.get('main','redirecturl')+"?"+uid
-		js = Tag(soup, "script")
-		js['type'] = "text/javascript"
-		script = NavigableString("if(document.domain != '"+config.get('main','redirectdomain')+"') window.location.href ='" + config.get('main','redirecturl')+"?"+uid+"'")
-		js.insert(0, script)
 
 		if soup.find('head') == None:
 			head = Tag(soup, "head")
@@ -156,9 +153,24 @@ class EmailReader(object):
 			head = soup.html.head
 			html = soup
 
-		head.insert(0, title)
-		head.insert(0, link)
-		head.insert(0, js)
+		# Redirecting
+		# We might want to lookup the content through a different URL
+		if config.has_option('main','redirecturl') and config.has_option('main','redirectdomain'):
+			cherrypy.log("Adding Redirects")
+			meta = Tag(soup, "meta")
+			meta['http-equiv'] = "refresh"
+			meta['content'] = "0;url="+config.get('main','redirecturl')+"?"+uid
+			link = Tag(soup, "link")
+			link['rel'] = "canonical"
+			link['href'] = config.get('main','redirecturl')+"?"+uid
+			js = Tag(soup, "script")
+			js['type'] = "text/javascript"
+			script = NavigableString("if(document.domain != '"+config.get('main','redirectdomain')+"') window.location.href ='" + config.get('main','redirecturl')+"?"+uid+"'")
+			js.insert(0, script)
+
+			head.insert(0, title)
+			head.insert(0, link)
+			head.insert(0, js)
 
 		return html.renderContents().decode('utf-8');
 
@@ -179,7 +191,7 @@ class RSSClient(object):
 
 		client = EmailClient()
 
-		for msgn in client.listBox()[:config.getint('rss','maxitems')]:
+		for msgn in reversed(client.listBox(config.get('imap','mailbox'))[:config.getint('rss','maxitems')]):
 			cherrypy.log("RSS Entry: "+msgn)
 			em = client.getEMail(msgn)
 			entry = fg.add_entry()
@@ -210,6 +222,7 @@ conf = {
 		'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
 	}
 }
-cherrypy.process.plugins.Daemonizer(cherrypy.engine).subscribe()
+if config.getboolean('main', 'daemon'):
+	cherrypy.process.plugins.Daemonizer(cherrypy.engine).subscribe()
 
 cherrypy.quickstart(root, '/', conf)
