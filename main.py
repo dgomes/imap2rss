@@ -60,8 +60,7 @@ class EmailClient(object):
 		elif mail.get('Content-ID'):
 			if mail.get('Content-ID')[1:-1] == cid:  ## Remove <> from cid
 				return mail.get_payload(decode=True), mail.get_content_type()
-		else:
-			return None, None
+		return None, None
 
 	def cid_2_images(self,body,msgn):
 		'''this replaces the <img src="<cid:SOMETHING>"/> tags with <img src="SOME URL"/> tags in the message'''
